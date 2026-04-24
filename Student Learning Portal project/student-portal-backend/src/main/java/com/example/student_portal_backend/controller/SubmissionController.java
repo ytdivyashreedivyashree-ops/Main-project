@@ -19,7 +19,7 @@ import com.example.student_portal_backend.service.SubmissionService;
 
 @RestController
 @RequestMapping("/submissions")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = { "http://localhost:5173", "http://localhost:5174", "http://localhost:5175" })
 public class SubmissionController {
 
     private final SubmissionService submissionService;
@@ -28,13 +28,13 @@ public class SubmissionController {
         this.submissionService = submissionService;
     }
 
+    // existing endpoints — unchanged
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public SubmissionResponse submit(
             @RequestParam Long assignmentId,
             @RequestParam(required = false) String answer,
             @RequestParam(required = false) MultipartFile file,
             Authentication auth) throws IOException {
-
         String username = auth.getName();
         return submissionService.submit(assignmentId, answer, file, username, username);
     }
@@ -52,5 +52,11 @@ public class SubmissionController {
     @GetMapping("/check/{assignmentId}")
     public boolean hasSubmitted(@PathVariable Long assignmentId, Authentication auth) {
         return submissionService.hasSubmitted(assignmentId, auth.getName());
+    }
+
+    // new — teacher sees all submissions for their assignments
+    @GetMapping("/teacher")
+    public List<SubmissionResponse> teacherSubmissions(Authentication auth) {
+        return submissionService.getByTeacher(auth.getName());
     }
 }

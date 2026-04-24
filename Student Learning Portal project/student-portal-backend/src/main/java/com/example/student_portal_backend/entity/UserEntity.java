@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -32,4 +34,16 @@ public class UserEntity {
 
     @Column(nullable = false)
     private String role;
+
+    @ManyToOne
+    @JoinColumn(name = "course_id")
+    private CourseEntity course;
+
+    // profile fields
+    private String phone;
+
+    @Column(length = 500)
+    private String bio;
+
+    private String profilePic; // stores filename
 }

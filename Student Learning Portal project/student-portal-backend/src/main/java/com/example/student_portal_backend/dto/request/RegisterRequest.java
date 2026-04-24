@@ -11,5 +11,8 @@ public class RegisterRequest {
     private String name;
     private String email;
     private String password;
-    private String role;
+    private String role;              // ADMIN, TEACHER, STUDENT
+    private Long courseId;            // required for TEACHER and STUDENT
+    private Long subjectId;           // teacher picks a predefined subject
+    private String customSubjectName; // teacher picks "Other" and types a name
 }

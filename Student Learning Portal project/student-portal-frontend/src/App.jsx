@@ -6,8 +6,11 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getMe } from "./services/userService";
 
 import StudentList from "./pages/StudentList";
+import StudentHome from "./pages/StudentHome";
 import AddStudent from "./pages/AddStudent";
 import EditStudent from "./pages/EditStudent";
 import Login from "./pages/Login";
@@ -15,15 +18,19 @@ import Register from "./pages/Register";
 import StudyMaterials from "./pages/StudyMaterials";
 import Assignments from "./pages/Assignments";
 import Quiz from "./pages/Quiz";
+import TeacherStudents from "./pages/TeacherStudents";
+import AddMarks from "./pages/AddMarks";
+import TeacherSubmissions from "./pages/TeacherSubmissions";
+import MyMarks from "./pages/MyMarks";
+import ManageSubjects from "./pages/ManageSubjects";
+import MySubjects from "./pages/MySubjects";
+import Profile from "./pages/Profile";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminStudents from "./pages/AdminStudents";
+import AdminTeachers from "./pages/AdminTeachers";
+import AdminCourses from "./pages/AdminCourses";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
-
-const navLinks = [
-  { to: "/", icon: "dashboard", label: "Home", exact: true },
-  { to: "/materials", icon: "folder_open", label: "Materials" },
-  { to: "/assignments", icon: "assignment", label: "Assignments" },
-  { to: "/quiz", icon: "quiz", label: "Quiz" },
-];
 
 function SidebarLink({ to, icon, label, end }) {
   return (
@@ -63,11 +70,144 @@ function SidebarLink({ to, icon, label, end }) {
   );
 }
 
+// Sidebar section label
+function SidebarSection({ label }) {
+  return (
+    <p className="px-6 pt-4 pb-1 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+      {label}
+    </p>
+  );
+}
+
+function getNavLinks(role) {
+  if (role === "ADMIN")
+    return {
+      sections: [
+        {
+          label: "Overview",
+          links: [
+            { to: "/", icon: "dashboard", label: "Dashboard", exact: true },
+          ],
+        },
+        {
+          label: "Manage Users",
+          links: [
+            { to: "/admin/students", icon: "group", label: "All Students" },
+            { to: "/admin/teachers", icon: "school", label: "All Teachers" },
+          ],
+        },
+        {
+          label: "Academic",
+          links: [
+            {
+              to: "/admin/courses",
+              icon: "library_books",
+              label: "All Courses",
+            },
+            { to: "/subjects", icon: "menu_book", label: "Subjects" },
+            { to: "/materials", icon: "folder_open", label: "Study Materials" },
+            { to: "/assignments", icon: "assignment", label: "Assignments" },
+            { to: "/quiz", icon: "quiz", label: "Quiz" },
+          ],
+        },
+      ],
+    };
+
+  if (role === "TEACHER")
+    return {
+      sections: [
+        {
+          label: "General",
+          links: [
+            { to: "/", icon: "dashboard", label: "Home", exact: true },
+            { to: "/materials", icon: "folder_open", label: "Materials" },
+            { to: "/assignments", icon: "assignment", label: "Assignments" },
+            { to: "/quiz", icon: "quiz", label: "Quiz" },
+            { to: "/profile", icon: "account_circle", label: "My Profile" },
+          ],
+        },
+        {
+          label: "My Students",
+          links: [
+            { to: "/add", icon: "person_add", label: "Add Student" },
+            { to: "/teacher/students", icon: "group", label: "View Students" },
+          ],
+        },
+        {
+          label: "Academic",
+          links: [
+            {
+              to: "/teacher/submissions",
+              icon: "assignment_turned_in",
+              label: "Submissions",
+            },
+            { to: "/teacher/marks", icon: "grade", label: "Marks" },
+          ],
+        },
+      ],
+    };
+
+  if (role === "STUDENT")
+    return {
+      sections: [
+        {
+          label: "",
+          links: [
+            { to: "/", icon: "dashboard", label: "Home", exact: true },
+            { to: "/profile", icon: "account_circle", label: "My Profile" },
+          ],
+        },
+      ],
+    };
+
+  return {
+    sections: [
+      {
+        label: "",
+        links: [{ to: "/", icon: "dashboard", label: "Home", exact: true }],
+      },
+    ],
+  };
+}
+
+function getRoleColor(role) {
+  if (role === "TEACHER") return "linear-gradient(135deg,#a855f7,#7c3aed)";
+  if (role === "ADMIN") return "linear-gradient(135deg,#f59e0b,#d97706)";
+  return "linear-gradient(135deg,#22c55e,#16a34a)";
+}
+
+function getRoleBadgeStyle(role) {
+  if (role === "TEACHER")
+    return {
+      backgroundColor: "rgba(168,85,247,0.1)",
+      color: "#d8b4fe",
+      border: "1px solid rgba(168,85,247,0.2)",
+    };
+  if (role === "ADMIN")
+    return {
+      backgroundColor: "rgba(245,158,11,0.1)",
+      color: "#fcd34d",
+      border: "1px solid rgba(245,158,11,0.2)",
+    };
+  return {
+    backgroundColor: "rgba(34,197,94,0.1)",
+    color: "#86efac",
+    border: "1px solid rgba(34,197,94,0.2)",
+  };
+}
+
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    if (token) {
+      getMe().then((r) => setUserName(r.data.name || "")).catch(() => {});
+    }
+  }, [token]);
   const hideLayout =
     location.pathname === "/login" || location.pathname === "/register";
 
@@ -108,6 +248,9 @@ function AppContent() {
     );
   }
 
+  const { sections } = getNavLinks(role);
+  const allLinks = sections.flatMap((s) => s.links);
+
   return (
     <div
       className="flex min-h-screen"
@@ -127,7 +270,7 @@ function AppContent() {
         }}
       >
         {/* Logo */}
-        <div className="px-6 py-7 mb-2">
+        <div className="px-6 py-6 mb-1">
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -157,28 +300,30 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Divider */}
         <div
-          className="mx-6 mb-4 h-px"
+          className="mx-6 mb-2 h-px"
           style={{
             background:
               "linear-gradient(to right, transparent, rgba(77,142,255,0.15), transparent)",
           }}
         />
 
-        <nav className="flex-1 space-y-0.5 px-2">
-          {navLinks.map((l) => (
-            <SidebarLink key={l.to} {...l} end={l.exact} />
+        {/* Nav with sections */}
+        <nav className="flex-1 overflow-y-auto pb-2">
+          {sections.map((section) => (
+            <div key={section.label}>
+              {section.label && <SidebarSection label={section.label} />}
+              {section.links.map((l) => (
+                <SidebarLink key={l.to} {...l} end={l.exact} />
+              ))}
+            </div>
           ))}
-          {role === "TEACHER" && (
-            <SidebarLink to="/add" icon="person_add" label="Add Student" />
-          )}
         </nav>
 
-        {/* Bottom */}
+        {/* User info + logout */}
         <div className="px-4 pb-6">
           <div
-            className="mx-2 mb-4 h-px"
+            className="mx-2 mb-3 h-px"
             style={{
               background:
                 "linear-gradient(to right, transparent, rgba(77,142,255,0.1), transparent)",
@@ -192,19 +337,14 @@ function AppContent() {
             }}
           >
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{
-                background:
-                  role === "TEACHER"
-                    ? "linear-gradient(135deg,#a855f7,#7c3aed)"
-                    : "linear-gradient(135deg,#22c55e,#16a34a)",
-              }}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+              style={{ background: getRoleColor(role) }}
             >
-              {role?.charAt(0)}
+              {userName ? userName.charAt(0).toUpperCase() : role?.charAt(0)}
             </div>
-            <div>
-              <p className="text-xs font-bold text-slate-300">{role}</p>
-              <p className="text-[10px] text-slate-600">Logged in</p>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-300 truncate">{userName || role}</p>
+              <p className="text-[10px] text-slate-600 truncate">{role}</p>
             </div>
           </div>
           <button
@@ -217,7 +357,7 @@ function AppContent() {
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Main content */}
       <main className="flex-1 md:ml-64 min-h-screen">
         {/* Top bar */}
         <header
@@ -237,13 +377,14 @@ function AppContent() {
               WebkitTextFillColor: "transparent",
             }}
           >
-            Learning Hub
+            Learning Portal
           </h2>
           <div className="flex items-center gap-3">
             <span
-              className={`text-xs font-bold px-3 py-1.5 rounded-full ${role === "TEACHER" ? "bg-purple-500/10 text-purple-300 border border-purple-500/20" : "bg-green-500/10 text-green-300 border border-green-500/20"}`}
+              className="text-xs font-bold px-3 py-1.5 rounded-full"
+              style={getRoleBadgeStyle(role)}
             >
-              {role}
+              {userName || role}
             </span>
             <button
               onClick={handleLogout}
@@ -259,14 +400,17 @@ function AppContent() {
 
         <div className="px-8 pb-24 md:pb-8">
           <Routes>
+            {/* Home route — role-based */}
             <Route
               path="/"
               element={
                 <ProtectedRoute>
-                  <StudentList />
+                  {role === "ADMIN" ? <AdminDashboard /> : role === "STUDENT" ? <StudentHome /> : <StudentList />}
                 </ProtectedRoute>
               }
             />
+
+            {/* Existing routes */}
             <Route
               path="/add"
               element={
@@ -307,11 +451,99 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Teacher routes */}
+            <Route
+              path="/teacher/students"
+              element={
+                <ProtectedRoute>
+                  <TeacherStudents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/teacher/submissions"
+              element={
+                <ProtectedRoute>
+                  <TeacherSubmissions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/teacher/marks"
+              element={
+                <ProtectedRoute>
+                  <AddMarks />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Student routes */}
+            <Route
+              path="/my-marks"
+              element={
+                <ProtectedRoute>
+                  <MyMarks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Shared routes */}
+            <Route
+              path="/subjects"
+              element={
+                <ProtectedRoute>
+                  <ManageSubjects />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-subjects"
+              element={
+                <ProtectedRoute>
+                  <MySubjects />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admin routes */}
+            <Route
+              path="/admin/students"
+              element={
+                <ProtectedRoute>
+                  <AdminStudents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/teachers"
+              element={
+                <ProtectedRoute>
+                  <AdminTeachers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/courses"
+              element={
+                <ProtectedRoute>
+                  <AdminCourses />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </div>
       </main>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav — shows first 5 links of current role */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center px-4 py-3"
         style={{
@@ -320,7 +552,7 @@ function AppContent() {
           borderTop: "1px solid rgba(77,142,255,0.08)",
         }}
       >
-        {navLinks.map((l) => (
+        {allLinks.slice(0, 5).map((l) => (
           <NavLink
             key={l.to}
             to={l.to}

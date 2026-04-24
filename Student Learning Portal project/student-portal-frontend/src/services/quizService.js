@@ -9,8 +9,14 @@ const authHeader = () => ({
 export const createQuiz = (data) =>
   axios.post(BASE, data, authHeader());
 
+export const getMyQuizzes = () =>
+  axios.get(`${BASE}/my`, authHeader());
+
 export const getAllQuizzes = () =>
   axios.get(BASE, authHeader());
+
+export const getQuizzesBySubject = (subjectId) =>
+  axios.get(`${BASE}/subject/${subjectId}`, authHeader());
 
 export const getQuizzesByAssignment = (assignmentId) =>
   axios.get(`${BASE}/assignment/${assignmentId}`, authHeader());

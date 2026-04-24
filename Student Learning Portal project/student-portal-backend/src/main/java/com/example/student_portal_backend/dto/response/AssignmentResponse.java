@@ -10,10 +10,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AssignmentResponse {
+    // existing fields
     private Long id;
     private String topic;
     private String description;
     private LocalDateTime dueDate;
-    private String fileName;
-    private String fileUrl;
+    private String title;
+    private String courseName;
+    private String subjectName;
+    private String givenByName;
 }

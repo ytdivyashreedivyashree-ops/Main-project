@@ -32,7 +32,14 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/auth/**", "/materials/**", "/uploads/**", "/assignments/**", "/submissions/**", "/quiz/**").permitAll()
+                        // public endpoints
+                        .requestMatchers("/auth/**", "/uploads/**").permitAll()
+                        // courses and subjects readable by all authenticated users; permit GET publicly for register dropdown
+                        .requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/subjects/**").permitAll()
+                        // everything else requires authentication
+                        .requestMatchers("/materials/**", "/assignments/**", "/submissions/**",
+                                "/quiz/**", "/students/**", "/marks/**", "/users/**").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

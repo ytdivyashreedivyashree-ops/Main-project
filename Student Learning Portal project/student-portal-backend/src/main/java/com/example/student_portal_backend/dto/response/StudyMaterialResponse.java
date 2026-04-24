@@ -13,4 +13,9 @@ public class StudyMaterialResponse {
     private String fileName;
     private String fileType;
     private String fileUrl;
+    private String courseName;
+    private String subjectName;
+    private Long subjectId;
+    private String uploadedByName;
+    private Long uploadedById;
 }

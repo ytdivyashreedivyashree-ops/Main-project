@@ -35,6 +35,18 @@ public class QuizController {
         return quizService.createQuiz(request);
     }
 
+    // Teacher: get only their own quizzes
+    @GetMapping("/my")
+    public List<QuizResponse> myQuizzes(Authentication auth) {
+        return quizService.getQuizzesByTeacher(auth.getName());
+    }
+
+    // Get quizzes by subject (student use)
+    @GetMapping("/subject/{subjectId}")
+    public List<QuizResponse> getBySubject(@PathVariable Long subjectId) {
+        return quizService.getQuizzesBySubject(subjectId);
+    }
+
     // Get all quizzes
     @GetMapping
     public List<QuizResponse> getAllQuizzes() {

@@ -7,6 +7,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -23,6 +25,7 @@ public class AssignmentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // existing columns — untouched
     @Column(nullable = false)
     private String topic;
 
@@ -34,6 +37,15 @@ public class AssignmentEntity {
 
     private String createdBy;
     private LocalDateTime createdAt;
-    private String fileName;
-    private String filePath;
+
+    // new columns
+    private String title;
+
+    @ManyToOne
+    @JoinColumn(name = "course_id")
+    private CourseEntity course;
+
+    @ManyToOne
+    @JoinColumn(name = "subject_id")
+    private SubjectEntity subject;
 }

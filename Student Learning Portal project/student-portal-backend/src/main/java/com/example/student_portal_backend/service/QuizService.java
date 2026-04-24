@@ -80,6 +80,20 @@ public class QuizService {
         return quizRepo.findByAssignmentId(assignmentId).stream().map(this::toResponse).toList();
     }
 
+    public List<QuizResponse> getQuizzesBySubject(Long subjectId) {
+        if (subjectId == null) throw new RuntimeException("Subject ID is required");
+        return quizRepo.findAll().stream()
+                .filter(q -> q.getAssignment().getSubject() != null
+                        && q.getAssignment().getSubject().getId().equals(subjectId))
+                .map(this::toResponse).toList();
+    }
+
+    public List<QuizResponse> getQuizzesByTeacher(String teacherName) {
+        return quizRepo.findAll().stream()
+                .filter(q -> teacherName.equals(q.getAssignment().getCreatedBy()))
+                .map(this::toResponse).toList();
+    }
+
     public List<QuizResponse> getAllQuizzes() {
         return quizRepo.findAll().stream().map(this::toResponse).toList();
     }

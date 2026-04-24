@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { getAllAssignments } from "../services/assignmentService";
-import { createQuiz, getAllQuizzes, submitQuiz, getMyResults, getQuizResults, hasAttempted, deleteQuiz } from "../services/quizService";
+import { useNavigate } from "react-router-dom";
+import { getAllAssignments, getMyAssignments } from "../services/assignmentService";
+import { createQuiz, getAllQuizzes, getMyQuizzes, getQuizzesBySubject, submitQuiz, getMyResults, getQuizResults, hasAttempted, deleteQuiz } from "../services/quizService";
+import { getSubjectsByCourseWithTeachers } from "../services/subjectService";
+import { getMe } from "../services/userService";
 
 const card = { backgroundColor: "#171f33", borderRadius: "1.5rem", border: "1px solid rgba(66,71,84,0.3)" };
 const inputStyle = { backgroundColor: "#131b2e", border: "1px solid rgba(66,71,84,0.4)", color: "#dae2fd", borderRadius: "0.75rem", padding: "0.65rem 1rem", outline: "none", fontSize: "0.875rem", width: "100%" };
 
 export default function Quiz() {
+  const navigate = useNavigate();
   const role = localStorage.getItem("role");
   const [assignments, setAssignments] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
@@ -16,12 +20,43 @@ export default function Quiz() {
   const [resultPopup, setResultPopup] = useState(null);
   const [teacherResults, setTeacherResults] = useState({});
   const [form, setForm] = useState({ title: "", assignmentId: "", questions: [{ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctOption: "A" }] });
+  const [courseSubjects, setCourseSubjects] = useState([]);
+  const [activeSubjectId, setActiveSubjectId] = useState("");
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    if (role === "STUDENT") {
+      getMe().then((r) => {
+        if (r.data.courseId) {
+          getSubjectsByCourseWithTeachers(r.data.courseId).then((res) => {
+            const unique = res.data.filter((s, i, arr) => arr.findIndex((x) => x.id === s.id) === i);
+            setCourseSubjects(unique);
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+      getMyResults().then((r) => setMyResults(r.data)).catch(() => {});
+    } else {
+      fetchData();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (role === "STUDENT" && activeSubjectId) {
+      getQuizzesBySubject(activeSubjectId).then(async (qRes) => {
+        setQuizzes(qRes.data);
+        const map = {};
+        for (const q of qRes.data) { try { const r = await hasAttempted(q.id); map[q.id] = r.data; } catch { map[q.id] = false; } }
+        setAttemptedMap(map);
+      }).catch(() => {});
+    } else if (role === "STUDENT" && !activeSubjectId) {
+      setQuizzes([]);
+    }
+  }, [activeSubjectId, role]);
 
   const fetchData = async () => {
     try {
-      const [aRes, qRes] = await Promise.all([getAllAssignments(), getAllQuizzes()]);
+      // teacher sees only their own assignments and quizzes
+      const aRes = role === "TEACHER" ? await getMyAssignments() : await getAllAssignments();
+      const qRes = role === "TEACHER" ? await getMyQuizzes() : await getAllQuizzes();
       setAssignments(aRes.data);
       setQuizzes(qRes.data);
       if (role === "STUDENT") {
@@ -70,9 +105,18 @@ export default function Quiz() {
 
   return (
     <div className="space-y-6 py-6" style={{ color: "#dae2fd" }}>
-      <div>
-        <h1 className="text-3xl font-extrabold text-blue-400" style={{ fontFamily: "Manrope" }}>Quiz</h1>
-        <p className="text-slate-500 text-sm mt-1">MCQ quizzes based on assignments</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold text-blue-400" style={{ fontFamily: "Manrope" }}>Quiz</h1>
+          <p className="text-slate-500 text-sm mt-1">MCQ quizzes based on assignments</p>
+        </div>
+        {role === "STUDENT" && (
+          <button onClick={() => navigate("/")} title="Go to Home"
+            className="flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:scale-110 active:scale-95"
+            style={{ backgroundColor: "rgba(77,142,255,0.1)", border: "1px solid rgba(77,142,255,0.2)", color: "#adc6ff" }}>
+            <span className="material-symbols-outlined text-lg">refresh</span>
+          </button>
+        )}
       </div>
 
       {role === "TEACHER" && (
@@ -122,10 +166,40 @@ export default function Quiz() {
         </form>
       )}
 
+      {/* STUDENT: mandatory subject selector */}
+      {role === "STUDENT" && (
+        <div style={card} className="p-5">
+          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">
+            Select Subject
+          </label>
+          {courseSubjects.length === 0 ? (
+            <p className="text-sm text-slate-500">No subjects available for your course yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {courseSubjects.map((s) => (
+                <button key={s.id} onClick={() => setActiveSubjectId(String(s.id))}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                  style={String(activeSubjectId) === String(s.id)
+                    ? { background: "linear-gradient(135deg,#4d8eff,#1d4ed8)", color: "#fff", boxShadow: "0 4px 16px rgba(77,142,255,0.3)" }
+                    : { backgroundColor: "#131b2e", color: "#8c909f", border: "1px solid rgba(77,142,255,0.15)" }}>
+                  {s.subjectName}
+                  {s.teacherName && <span className="ml-1.5 text-xs opacity-70">· {s.teacherName}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Quiz List */}
       <div className="space-y-4">
         <h2 className="text-lg font-bold text-slate-300" style={{ fontFamily: "Manrope" }}>All Quizzes</h2>
-        {quizzes.length === 0 ? (
+        {role === "STUDENT" && !activeSubjectId && courseSubjects.length > 0 ? (
+          <div className="p-16 text-center rounded-3xl" style={card}>
+            <span className="material-symbols-outlined text-5xl text-slate-600 mb-4 block">quiz</span>
+            <p className="text-slate-400 font-semibold">Select a subject above to view its quizzes</p>
+          </div>
+        ) : quizzes.length === 0 ? (
           <div className="p-16 text-center rounded-3xl" style={card}>
             <span className="material-symbols-outlined text-5xl text-slate-600 mb-4 block">quiz</span>
             <p className="text-slate-500">No quizzes available</p>

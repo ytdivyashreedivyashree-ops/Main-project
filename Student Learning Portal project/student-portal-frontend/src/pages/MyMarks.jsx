@@ -1,0 +1,199 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getMyMarks } from "../services/marksService";
+import { getMe } from "../services/userService";
+
+const card = { backgroundColor: "#171f33", borderRadius: "1.5rem", border: "1px solid rgba(66,71,84,0.3)" };
+
+export default function MyMarks() {
+  const navigate = useNavigate();
+  const [marks, setMarks] = useState([]);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    getMyMarks().then((r) => setMarks(r.data)).catch(() => alert("Failed to load marks"));
+    getMe().then((r) => setUser(r.data)).catch(() => {});
+  }, []);
+
+  const getPercentage = (obtained, max) => max > 0 ? ((Number(obtained) / Number(max)) * 100).toFixed(1) : "0.0";
+  const getColor = (pct) => Number(pct) >= 75 ? "#4ade80" : Number(pct) >= 50 ? "#facc15" : "#f87171";
+
+  const handlePrint = () => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Marks Report</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 30px; color: #111; }
+          .header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #1d4ed8; padding-bottom: 16px; }
+          .header h1 { font-size: 22px; color: #1d4ed8; margin-bottom: 4px; }
+          .header p { font-size: 13px; color: #555; }
+          .info { display: flex; gap: 40px; margin-bottom: 20px; font-size: 13px; }
+          .info div { display: flex; flex-direction: column; gap: 4px; }
+          .info span { font-weight: bold; }
+          table { width: 100%; border-collapse: collapse; font-size: 13px; }
+          th { background: #1d4ed8; color: #fff; padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+          td { padding: 9px 12px; border-bottom: 1px solid #e5e7eb; }
+          tr:nth-child(even) td { background: #f9fafb; }
+          .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; background: #dbeafe; color: #1d4ed8; }
+          .score-green { color: #16a34a; font-weight: bold; }
+          .score-yellow { color: #ca8a04; font-weight: bold; }
+          .score-red { color: #dc2626; font-weight: bold; }
+          .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+          .summary { margin-top: 20px; padding: 12px 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; font-size: 13px; }
+          .summary span { font-weight: bold; color: #0369a1; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>EduPortal — Academic Marks Report</h1>
+          <p>Official Student Performance Record</p>
+        </div>
+        <div class="info">
+          <div>
+            <p>Student Name</p>
+            <span>${user?.name || "—"}</span>
+          </div>
+          <div>
+            <p>Course</p>
+            <span>${user?.courseName || marks[0]?.courseName || "—"}</span>
+          </div>
+          <div>
+            <p>Print Date</p>
+            <span>${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</span>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Subject</th>
+              <th>Exam Type</th>
+              <th>Marks Obtained</th>
+              <th>Max Marks</th>
+              <th>Percentage</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${marks.map((m, i) => {
+              const pct = m.maxMarks > 0 ? ((Number(m.marksObtained) / Number(m.maxMarks)) * 100).toFixed(1) : "0.0";
+              const cls = Number(pct) >= 75 ? "score-green" : Number(pct) >= 50 ? "score-yellow" : "score-red";
+              return `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>${m.subjectName || "—"}</td>
+                  <td><span class="badge">${m.examType}</span></td>
+                  <td class="${cls}">${m.marksObtained}</td>
+                  <td>${m.maxMarks}</td>
+                  <td class="${cls}">${pct}%</td>
+                  <td>${m.recordedAt ? new Date(m.recordedAt).toLocaleDateString() : "—"}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+        ${marks.length > 0 ? (() => {
+          const avg = (marks.reduce((sum, m) => sum + Number(m.marksObtained), 0) / marks.length).toFixed(1);
+          return `<div class="summary">
+            Total Records: <span>${marks.length}</span>
+            &nbsp;|&nbsp; Overall Average (out of 100): <span>${avg}%</span>
+          </div>`;
+        })() : ""}
+        <div class="footer">
+          Generated by EduPortal &nbsp;·&nbsp; ${new Date().toLocaleString()}
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  return (
+    <div className="space-y-6 py-6" style={{ color: "#dae2fd" }}>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-extrabold text-blue-400" style={{ fontFamily: "Manrope" }}>My Marks</h1>
+          <p className="text-slate-500 text-sm mt-1">Your academic performance</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate("/")} title="Go to Home"
+            className="flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:scale-110 active:scale-95"
+            style={{ backgroundColor: "rgba(77,142,255,0.1)", border: "1px solid rgba(77,142,255,0.2)", color: "#adc6ff" }}>
+            <span className="material-symbols-outlined text-lg">refresh</span>
+          </button>
+          {marks.length > 0 && (
+            <button onClick={handlePrint}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-95"
+              style={{ background: "linear-gradient(135deg,#4d8eff,#1d4ed8)", color: "#fff", boxShadow: "0 4px 16px rgba(77,142,255,0.3)" }}>
+              <span className="material-symbols-outlined text-base">print</span>
+              Print Marks
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={card} className="overflow-hidden">
+        <div className="px-6 py-4 flex items-center justify-between border-b" style={{ borderColor: "rgba(66,71,84,0.3)" }}>
+          <h2 className="font-bold" style={{ color: "#dae2fd", fontFamily: "Manrope" }}>All Marks</h2>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "rgba(77,142,255,0.15)", color: "#adc6ff" }}>
+            {marks.length} record{marks.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        {marks.length === 0 ? (
+          <div className="p-16 text-center">
+            <span className="material-symbols-outlined text-5xl text-slate-600 mb-4 block">grade</span>
+            <p className="text-slate-500">No marks recorded yet</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: "1px solid rgba(66,71,84,0.3)" }}>
+                  {["Subject", "Course", "Exam Type", "Marks", "Percentage", "Date"].map((h) => (
+                    <th key={h} className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {marks.map((m) => {
+                  const pct = getPercentage(m.marksObtained, m.maxMarks);
+                  return (
+                    <tr key={m.id} style={{ borderBottom: "1px solid rgba(66,71,84,0.15)" }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1a2540"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                      <td className="px-6 py-3">
+                        <p className="font-semibold" style={{ color: "#dae2fd" }}>{m.subjectName}</p>
+                        <p className="text-xs text-slate-500">{m.subjectCode}</p>
+                      </td>
+                      <td className="px-6 py-3 text-slate-400">{m.courseName}</td>
+                      <td className="px-6 py-3">
+                        <span className="text-xs font-semibold px-2 py-1 rounded-full"
+                          style={{ backgroundColor: "rgba(77,142,255,0.1)", color: "#adc6ff" }}>{m.examType}</span>
+                      </td>
+                      <td className="px-6 py-3 font-bold" style={{ color: getColor(pct) }}>
+                        {m.marksObtained} / {m.maxMarks}
+                      </td>
+                      <td className="px-6 py-3 font-bold" style={{ color: getColor(pct) }}>{pct}%</td>
+                      <td className="px-6 py-3 text-xs text-slate-500">
+                        {m.recordedAt ? new Date(m.recordedAt).toLocaleDateString() : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
